@@ -20,6 +20,8 @@ Required schema:
   "attractions": [
     {
       "name": "<attraction name>",
+      "lat": <number, latitude e.g. 35.7148>,
+      "lng": <number, longitude e.g. 139.7967>,
       "area": "<district or neighborhood>",
       "category": "<temple|museum|park|shopping|food|entertainment|other>",
       "recommended_duration_hours": <number>,
@@ -37,3 +39,4 @@ Rules:
 - Include at least 2–3 attractions per day
 - area_summary is critical — it will be used by the accommodation planner to find nearby hotels
 - All cost estimates should be in USD
+- lat/lng must be realistic coordinates for the attraction (used for map display)

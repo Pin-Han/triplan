@@ -20,6 +20,8 @@ Required schema:
   "recommendations": [
     {
       "name": "<hotel or accommodation name>",
+      "lat": <number, latitude e.g. 35.6938>,
+      "lng": <number, longitude e.g. 139.7010>,
       "area": "<district or neighborhood>",
       "price_range_usd_per_night": { "min": <number>, "max": <number> },
       "distance_to_attractions": "<e.g. '10 min walk to Shinjuku Gyoen'>",
@@ -32,3 +34,4 @@ Rules:
 - Include 2–3 recommendations at different price points when possible
 - area_summary is critical — it will be used by the transportation planner for route planning
 - All prices should be in USD per night
+- lat/lng must be realistic coordinates for the accommodation (used for map display)
