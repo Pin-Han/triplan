@@ -38,6 +38,36 @@ import type { AttractionsOutput, AccommodationOutput, TransportationOutput } fro
 // Per-context A2A conversation history
 const contexts: Map<string, Message[]> = new Map();
 
+// ── MapData types (Phase 16) ─────────────────────────────────────────────────
+
+interface MapMarker {
+  id: string;
+  lat: number;
+  lng: number;
+  type: "attraction" | "accommodation";
+  label: string;
+  day?: number;
+  popup: {
+    title: string;
+    description: string;
+    cost?: string;
+  };
+}
+
+interface MapRoute {
+  from: string;
+  to: string;
+  method: string;
+  duration_min: number;
+}
+
+interface MapData {
+  center: { lat: number; lng: number };
+  zoom: number;
+  markers: MapMarker[];
+  routes: MapRoute[];
+}
+
 const MAX_LOOP_TURNS = 10;
 const AGENT_TIMEOUT_MS = 90_000;
 const MAX_EVAL_ROUNDS = 2;
@@ -220,8 +250,11 @@ export class TravelOrchestratorExecutor implements AgentExecutor {
     // Append budget breakdown (Phase 15) — non-blocking on failure
     const finalText = this.calculateAndAppendBudget(loopResult.text, loopResult.structuredResults, userRequest);
 
+    // Build map data from structured results (Phase 16) — non-blocking on failure
+    const mapData = this.buildMapData(loopResult.structuredResults);
+
     // Final plan — publish artifact
-    await this.publishFinalPlan(taskId, contextId, finalText, loopResult.tokenUsage, history, eventBus);
+    await this.publishFinalPlan(taskId, contextId, finalText, loopResult.tokenUsage, history, eventBus, mapData);
   }
 
   // ─── Agentic loop ─────────────────────────────────────────────────────────────
@@ -544,6 +577,98 @@ export class TravelOrchestratorExecutor implements AgentExecutor {
     }
   }
 
+  // ─── Map data generation ──────────────────────────────────────────────────────
+
+  private buildMapData(structuredResults: Map<string, any>): MapData | null {
+    try {
+      const markers: MapMarker[] = [];
+
+      const attractionsData = structuredResults.get("attractions") as AttractionsOutput | undefined;
+      if (attractionsData?.attractions) {
+        const dayLookup = new Map<string, number>();
+        for (const group of attractionsData.suggested_day_groupings ?? []) {
+          for (const name of group.attraction_names) {
+            dayLookup.set(name, group.day);
+          }
+        }
+
+        for (const item of attractionsData.attractions) {
+          if (typeof item.lat !== "number" || typeof item.lng !== "number") continue;
+          if (item.lat < -90 || item.lat > 90 || item.lng < -180 || item.lng > 180) {
+            console.warn(`[MapData] Skipping attraction "${item.name}" — coordinates out of range (${item.lat}, ${item.lng})`);
+            continue;
+          }
+          markers.push({
+            id: `attr-${markers.length}`,
+            lat: item.lat,
+            lng: item.lng,
+            type: "attraction",
+            label: item.name,
+            day: dayLookup.get(item.name),
+            popup: {
+              title: item.name,
+              description: `${item.category} · ${item.area}`,
+              cost: item.estimated_cost_usd > 0 ? `$${item.estimated_cost_usd}` : "Free",
+            },
+          });
+        }
+      }
+
+      const accommodationData = structuredResults.get("accommodation") as AccommodationOutput | undefined;
+      if (accommodationData?.recommendations) {
+        for (const item of accommodationData.recommendations) {
+          if (typeof item.lat !== "number" || typeof item.lng !== "number") continue;
+          if (item.lat < -90 || item.lat > 90 || item.lng < -180 || item.lng > 180) {
+            console.warn(`[MapData] Skipping accommodation "${item.name}" — coordinates out of range (${item.lat}, ${item.lng})`);
+            continue;
+          }
+          markers.push({
+            id: `accom-${markers.length}`,
+            lat: item.lat,
+            lng: item.lng,
+            type: "accommodation",
+            label: item.name,
+            popup: {
+              title: item.name,
+              description: item.area,
+              cost: `$${item.price_range_usd_per_night.min}–$${item.price_range_usd_per_night.max}/night`,
+            },
+          });
+        }
+      }
+
+      if (markers.length === 0) return null;
+
+      const avgLat = markers.reduce((sum, m) => sum + m.lat, 0) / markers.length;
+      const avgLng = markers.reduce((sum, m) => sum + m.lng, 0) / markers.length;
+
+      const routes: MapRoute[] = [];
+      const transportationData = structuredResults.get("transportation") as TransportationOutput | undefined;
+      if (transportationData?.key_routes) {
+        for (const route of transportationData.key_routes) {
+          routes.push({
+            from: route.from,
+            to: route.to,
+            method: route.method,
+            duration_min: route.duration_min,
+          });
+        }
+      }
+
+      console.log(`[MapData] Built map data: ${markers.length} markers, ${routes.length} routes`);
+
+      return {
+        center: { lat: avgLat, lng: avgLng },
+        zoom: 12,
+        markers,
+        routes,
+      };
+    } catch (err) {
+      console.warn("[MapData] buildMapData failed:", err);
+      return null;
+    }
+  }
+
   // ─── Tool definitions ─────────────────────────────────────────────────────────
 
   private buildToolDefinitions(): ToolDefinition[] {
@@ -727,14 +852,15 @@ export class TravelOrchestratorExecutor implements AgentExecutor {
     finalText: string,
     tokenUsage: { inputTokens: number; outputTokens: number; breakdown: any[] },
     history: Message[],
-    eventBus: ExecutionEventBus
+    eventBus: ExecutionEventBus,
+    mapData?: MapData | null
   ): Promise<void> {
     const artifact = {
       artifactId: uuidv4(),
       name: "travel_plan.md",
       description: "Complete travel plan",
       parts: [{ kind: "text" as const, text: finalText }],
-      metadata: { tokenUsage },
+      metadata: { tokenUsage, ...(mapData ? { mapData } : {}) },
     };
 
     try {
