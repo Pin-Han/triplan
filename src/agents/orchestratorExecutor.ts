@@ -311,12 +311,22 @@ export class TravelOrchestratorExecutor implements AgentExecutor {
 
       // No tool calls = LLM produced a text response
       if (toolCalls.length === 0) {
-        const finalText = textParts.map((b) => b.text).join("\n").trim() || "Travel plan complete.";
+        const finalText = textParts.map((b) => b.text).join("\n").trim() || "";
 
-        // Only evaluate plans that were built with agent calls.
-        // If no agent was called yet, this is a clarifying question or interim response — return directly.
+        // No agent called yet — this is either a clarifying question or a degenerate empty response.
         if (agentsCalled === 0) {
-          return { type: "final", text: finalText, tokenUsage: accumulator, structuredResults };
+          // If the LLM returned meaningful text (>30 chars), treat it as a clarifying question.
+          if (finalText.length > 30) {
+            return { type: "ask_user", text: finalText, tokenUsage: accumulator, structuredResults };
+          }
+          // Empty / too short — LLM failed to use tools. Return a fallback preference question.
+          console.warn(`[Orchestrator] LLM returned no tools and short text on turn ${turn}: "${finalText}"`);
+          const fallbackQuestion =
+            "我很樂意幫你規劃旅行！為了給你最好的建議，想先了解一下：\n\n" +
+            "1. **幾個人**去？\n" +
+            "2. **預算**大概多少？\n" +
+            "3. 有沒有特別想去的地方或**偏好的活動**？（例如：美食、寺廟、購物、戶外活動）";
+          return { type: "ask_user", text: fallbackQuestion, tokenUsage: accumulator, structuredResults };
         }
 
         await this.publishProgress(taskId, contextId, "Reviewing plan quality...", eventBus);
