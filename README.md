@@ -8,7 +8,7 @@ AI-powered travel planner built on [Google's A2A Protocol](https://google.github
 
 ## Live Demo
 
-> **[Try it live →](https://triplan.onrender.com)**
+> **[Try it live →](https://triplan-47vw.onrender.com)**
 >
 > Free · 3 plans per day · No sign-up required
 > First load may take ~30s (free tier cold start)
