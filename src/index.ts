@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import {
   InMemoryTaskStore,
   TaskStore,
@@ -15,6 +17,7 @@ import { generateAgentCard } from "./utils/agentCard.js";
 import { OrchestratorConfig } from "./types/index.js";
 import { getPrompts, savePrompts } from "./services/promptStore.js";
 import { MemoryService } from "./services/memoryService.js";
+import { remainingPlans, getDailyLimit } from "./services/rateLimiter.js";
 
 // 載入環境變數
 dotenv.config();
@@ -87,6 +90,27 @@ async function main() {
   expressApp.delete("/api/memory", (_req, res) => {
     memoryService.clearMemory("default");
     res.json({ ok: true });
+  });
+
+  // Rate limit API
+  expressApp.get("/api/rate-limit", (req, res) => {
+    const contextId = (req.query.contextId as string) || "unknown";
+    res.json({
+      remaining: remainingPlans(contextId),
+      limit: getDailyLimit(),
+    });
+  });
+
+  // Serve frontend static files in production
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const webDistPath = path.join(__dirname, "..", "web", "dist");
+
+  expressApp.use(express.static(webDistPath));
+
+  // SPA fallback — all non-API routes serve index.html
+  expressApp.get("*", (_req, res) => {
+    res.sendFile(path.join(webDistPath, "index.html"));
   });
 
   // 5. Start the server

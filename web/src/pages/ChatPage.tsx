@@ -131,6 +131,7 @@ export default function ChatPage() {
   const [activeStructuredData, setActiveStructuredData] = useState<any>(null);
   const [activePlanText, setActivePlanText] = useState("");
   const [mobileView, setMobileView] = useState<"chat" | "map">("chat");
+  const [remainingPlans, setRemainingPlans] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -140,6 +141,13 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, currentStatus]);
+
+  useEffect(() => {
+    fetch(`/api/rate-limit?contextId=${encodeURIComponent(contextId)}`)
+      .then((r) => r.json())
+      .then((data) => setRemainingPlans(data.remaining))
+      .catch(() => {});
+  }, [contextId, messages.length]);
 
   function clearConversation() {
     const newId = crypto.randomUUID();
@@ -186,7 +194,12 @@ export default function ChatPage() {
       if (promptOverrides) metadata.prompts = promptOverrides;
       if (provider) metadata.provider = provider;
 
-      const res = await fetch("/message/stream", {
+      // A2A SDK handles JSON-RPC at POST /
+      // In dev: Vite proxy rewrites /message/stream → /
+      // In prod: same origin, post directly to /
+      const streamUrl = import.meta.env.DEV ? "/message/stream" : "/";
+
+      const res = await fetch(streamUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -341,6 +354,11 @@ export default function ChatPage() {
           <p className="text-xs text-gray-400 hidden sm:block">Agentic Orchestrator · Attractions + Accommodation + Transportation</p>
         </div>
         <div className="flex items-center gap-3">
+          {remainingPlans !== null && (
+            <span className="text-xs text-gray-400 hidden sm:inline">
+              {remainingPlans} plans remaining today
+            </span>
+          )}
           {sessionTokens > 0 && (
             <span className="text-xs text-gray-400 hidden sm:inline">
               Session: {sessionTokens.toLocaleString()} tokens
