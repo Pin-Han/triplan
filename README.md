@@ -2,12 +2,19 @@
 
 A multi-agent travel planning system built on [Google's A2A Protocol](https://google.github.io/A2A/) — demonstrating how independent AI agents discover, communicate, and collaborate via JSON-RPC 2.0.
 
+## Live Demo
+
+> **[Try it live →](https://travel-agent-orchestrator.onrender.com)**
+>
+> Free demo with 3 travel plans per day. No sign-up required.
+> First load may take ~30 seconds (free tier cold start).
+
 ## Architecture
 
 ```mermaid
 graph TD
-    User["🧑 User\n(React Web UI :5173)"]
-    Coord["🤖 Orchestrator Agent (:3000)\nAgentic Loop — LLM tool use"]
+    User["🧑 User\n(Web UI)"]
+    Coord["🤖 Orchestrator Agent\nAgentic Loop — LLM tool use"]
     Mem["🧠 Memory\n(data/memory/default.json)"]
     Attr["🗺️ Attractions Agent (:3001)"]
     Accom["🏨 Accommodation Agent (:3002)"]
@@ -230,6 +237,7 @@ docs/
 | `ACCOMMODATION_AGENT_URL` | Sub-agent URL (a2a mode) | `http://localhost:3002` |
 | `TRANSPORTATION_AGENT_URL` | Sub-agent URL (a2a mode) | `http://localhost:3003` |
 | `PORT` | Orchestrator port | `3000` |
+| `DAILY_PLAN_LIMIT` | Max planning sessions per user per day | `3` |
 
 ## API Endpoints (Orchestrator)
 
@@ -262,6 +270,24 @@ Tavily is optional. Without `TAVILY_API_KEY`, agents fall back to LLM knowledge.
 
 **Web UI shows blank page**
 Make sure you ran `npm install` inside the `web/` directory, and that the orchestrator is running on `:3000`.
+
+## Deployment
+
+### Render (recommended for demo)
+
+This project includes a `render.yaml` for one-click deployment:
+
+1. Fork this repo
+2. Connect your GitHub account to [Render](https://render.com)
+3. Create a new **Web Service** → select your fork
+4. Set environment variables: `ANTHROPIC_API_KEY` (or `GEMINI_API_KEY`), optionally `TAVILY_API_KEY`
+5. Deploy — Render will run `npm install && npm run build:all` and start the server
+
+The free tier spins down after 15 minutes of inactivity. First request after idle takes ~30 seconds.
+
+### Local development
+
+See [Getting Started](#getting-started) above.
 
 ## Roadmap
 
