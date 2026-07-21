@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import {
   InMemoryTaskStore,
   TaskStore,
@@ -87,6 +89,18 @@ async function main() {
   expressApp.delete("/api/memory", (_req, res) => {
     memoryService.clearMemory("default");
     res.json({ ok: true });
+  });
+
+  // Serve frontend static files in production
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const webDistPath = path.join(__dirname, "..", "web", "dist");
+
+  expressApp.use(express.static(webDistPath));
+
+  // SPA fallback — all non-API routes serve index.html
+  expressApp.get("*", (_req, res) => {
+    res.sendFile(path.join(webDistPath, "index.html"));
   });
 
   // 5. Start the server
