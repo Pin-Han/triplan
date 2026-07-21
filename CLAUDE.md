@@ -241,7 +241,7 @@ npm run kill-ports # 清掉佔用 3000/3001/3002/5173 的 process
 | provider 從前端 metadata 傳遞 | 讓使用者可在 UI 切換 AI 提供商，不需重啟 server |
 | Settings 頁 prompt 存 localStorage | 每個使用者有獨立設定，不影響 server 上的 `.md` 預設值 |
 | Retry 不重試 4xx（除 429） | Auth / bad-request 是程式錯誤，重試沒意義；429 是 rate limit 值得等 |
-| CLAUDE.md 加入 .gitignore | 此檔為 AI 輔助開發用的內部索引，不對外公開 |
+| CLAUDE.md 公開於 repo | 作為專案架構索引，幫助貢獻者和 AI 工具快速理解 codebase |
 | Memory 用 JSON 檔案不用資料庫 | 零依賴，方便 demo 時直接看 JSON 驗證；atomic write 防止寫入中斷 |
 | 記憶萃取改為獨立 LLM call（非 tool） | Orchestrator 自己決定要存什麼不穩定；獨立萃取有自己的 prompt，只記明確陳述的偏好 |
 | Log 存 localStorage 不存後端 | 純前端零架構成本；重啟不影響 server；使用者可自行清除 |
@@ -252,8 +252,7 @@ npm run kill-ports # 清掉佔用 3000/3001/3002/5173 的 process
 | `structuredResults` 在 loop 內收集後傳出 | 各 agent 的 structuredData 在 agentRegistry 驗證後即可用，需在 call_agent 處理時側錄到 Map，迴圈結束後才能做預算計算 |
 | Context Agent 8 秒 timeout + Promise.allSettled | 外部免費 API 可能慢；超時不能拖延主流程；allSettled 確保部分失敗不影響其他情境資料 |
 | 情境 API 優先選免費無 key 方案 | 降低新用戶設定門檻；Open-Meteo + Nager.Date 零成本，Tavily 使用現有 key |
-| Mapbox 而非 Google Maps Embed | Embed API 不支援多標記；Mapbox 免費額度（50k loads/月）對 demo 足夠；`VITE_MAPBOX_TOKEN` 未設定時 fallback 純文字，不 break 現有功能 |
-| Leaflet + OpenStreetMap 而非 Mapbox | 完全免費，無需 API key；OpenStreetMap tiles 無使用限制 |
+| Leaflet + OpenStreetMap 而非 Mapbox/Google Maps | 完全免費，無需 API key；OpenStreetMap tiles 無使用限制；Google Maps Embed 不支援多標記 |
 | Rate limit 用 `contextId` + `taskId` 去重 | contextId 已存在 localStorage；taskId 確保一次三 agent 呼叫只計為一次規劃 |
 | Rate limit 用 in-memory Map | 零依賴；Render 重啟清空計數對 demo 無害（等同免費重置） |
 
