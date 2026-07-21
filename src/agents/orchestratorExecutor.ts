@@ -386,7 +386,7 @@ export class TravelOrchestratorExecutor implements AgentExecutor {
             const limitMsg =
               `You've reached the daily free limit of ${getDailyLimit()} travel plans. ` +
               `Come back tomorrow, or deploy your own instance — it's open source! ` +
-              `https://github.com/Pin-Han/travel-agent-coordinator`;
+              `https://github.com/Pin-Han/triplan`;
             return { type: "ask_user" as const, text: limitMsg, tokenUsage: accumulator, structuredResults };
           }
 

@@ -1,10 +1,10 @@
-# Travel Agent Orchestrator
+# Triplan
 
 A multi-agent travel planning system built on [Google's A2A Protocol](https://google.github.io/A2A/) — demonstrating how independent AI agents discover, communicate, and collaborate via JSON-RPC 2.0.
 
 ## Live Demo
 
-> **[Try it live →](https://travel-agent-orchestrator.onrender.com)**
+> **[Try it live →](https://triplan.onrender.com)**
 >
 > Free demo with 3 travel plans per day. No sign-up required.
 > First load may take ~30 seconds (free tier cold start).

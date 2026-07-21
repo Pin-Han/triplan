@@ -1,5 +1,5 @@
 {
-  "name": "travel-agent-orchestrator",
+  "name": "triplan",
   "version": "1.0.0",
   "description": "Multi-agent travel planner built on Google's A2A Protocol — orchestrator dispatches to independent AI agents via JSON-RPC 2.0",
   "type": "module",
