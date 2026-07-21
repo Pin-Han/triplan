@@ -17,6 +17,7 @@ import { generateAgentCard } from "./utils/agentCard.js";
 import { OrchestratorConfig } from "./types/index.js";
 import { getPrompts, savePrompts } from "./services/promptStore.js";
 import { MemoryService } from "./services/memoryService.js";
+import { remainingPlans, getDailyLimit } from "./services/rateLimiter.js";
 
 // 載入環境變數
 dotenv.config();
@@ -89,6 +90,15 @@ async function main() {
   expressApp.delete("/api/memory", (_req, res) => {
     memoryService.clearMemory("default");
     res.json({ ok: true });
+  });
+
+  // Rate limit API
+  expressApp.get("/api/rate-limit", (req, res) => {
+    const contextId = (req.query.contextId as string) || "unknown";
+    res.json({
+      remaining: remainingPlans(contextId),
+      limit: getDailyLimit(),
+    });
   });
 
   // Serve frontend static files in production

@@ -34,6 +34,7 @@ import {
   formatBudgetMarkdown,
 } from "../services/budgetCalculator.js";
 import type { AttractionsOutput, AccommodationOutput, TransportationOutput } from "../services/schemaValidator.js";
+import { recordPlanningCall, getDailyLimit } from "../services/rateLimiter.js";
 
 // Per-context A2A conversation history
 const contexts: Map<string, Message[]> = new Map();
@@ -380,6 +381,15 @@ export class TravelOrchestratorExecutor implements AgentExecutor {
         }
 
         if (toolCall.name === "call_agent") {
+          // Rate limit check — only counts once per taskId
+          if (!recordPlanningCall(contextId, taskId)) {
+            const limitMsg =
+              `You've reached the daily free limit of ${getDailyLimit()} travel plans. ` +
+              `Come back tomorrow, or deploy your own instance — it's open source! ` +
+              `https://github.com/Pin-Han/travel-agent-coordinator`;
+            return { type: "ask_user" as const, text: limitMsg, tokenUsage: accumulator, structuredResults };
+          }
+
           const { agent_id, request, context } = toolCall.input as { agent_id: string; request: string; context?: string };
           const enrichedRequest = context ? `${request}\n\nAdditional context:\n${context}` : request;
 
