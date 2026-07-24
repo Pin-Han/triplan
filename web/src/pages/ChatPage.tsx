@@ -305,15 +305,27 @@ export default function ChatPage() {
               }
               if (event.final) break outer;
             } else if (kind === "artifact-update") {
-              const txt: string | undefined = event.artifact?.parts?.[0]?.text;
-              if (txt) finalText = txt;
+              const artifactName: string | undefined = event.artifact?.name;
               const meta = event.artifact?.metadata;
-              if (meta?.tokenUsage) {
-                tokenUsage = { input: meta.tokenUsage.inputTokens, output: meta.tokenUsage.outputTokens };
-                setSessionTokens((prev) => prev + meta.tokenUsage.inputTokens + meta.tokenUsage.outputTokens);
-              }
-              if (meta?.mapData) {
-                receivedMapData = meta.mapData as MapData;
+
+              if (artifactName === "map_progress") {
+                // Progressive map: apply partial map data immediately
+                if (meta?.mapData) {
+                  receivedMapData = meta.mapData as MapData;
+                  setActiveMapData(receivedMapData);
+                }
+              } else {
+                // Final artifact (travel_plan.md, clarification.md, etc.)
+                const txt: string | undefined = event.artifact?.parts?.[0]?.text;
+                if (txt) finalText = txt;
+                if (meta?.tokenUsage) {
+                  tokenUsage = { input: meta.tokenUsage.inputTokens, output: meta.tokenUsage.outputTokens };
+                  setSessionTokens((prev) => prev + meta.tokenUsage.inputTokens + meta.tokenUsage.outputTokens);
+                }
+                if (meta?.mapData) {
+                  receivedMapData = meta.mapData as MapData;
+                  setActiveMapData(receivedMapData);
+                }
               }
             }
           }
@@ -321,8 +333,9 @@ export default function ChatPage() {
 
         const durationMs = Date.now() - startTime;
 
+        // Map data is already set progressively inside the loop.
+        // Only set plan text + structured data for export when we have the final artifact.
         if (receivedMapData) {
-          setActiveMapData(receivedMapData);
           setActivePlanText(finalText);
         }
 
