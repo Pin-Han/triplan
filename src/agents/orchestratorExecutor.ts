@@ -69,6 +69,8 @@ interface MapData {
   routes: MapRoute[];
 }
 
+const ENABLE_PROGRESSIVE_MAP = process.env.ENABLE_PROGRESSIVE_MAP !== "false"; // default on
+
 const MAX_LOOP_TURNS = 10;
 const AGENT_TIMEOUT_MS = 90_000;
 const MAX_EVAL_ROUNDS = 2;
@@ -394,7 +396,7 @@ export class TravelOrchestratorExecutor implements AgentExecutor {
           const enrichedRequest = context ? `${request}\n\nAdditional context:\n${context}` : request;
 
           agentsCalled++;
-          await this.publishProgress(taskId, contextId, `Consulting ${agent_id} specialist...`, eventBus);
+          await this.publishProgress(taskId, contextId, `Consulting ${agent_id} specialist...`, eventBus, agent_id);
 
           const agentResult = await this.agentRegistry.callAgentAPI(
             agent_id,
@@ -418,6 +420,27 @@ export class TravelOrchestratorExecutor implements AgentExecutor {
           // Capture structured data for budget calculation (Phase 15)
           if (agentResult.success && agentResult.data?.structuredData) {
             structuredResults.set(agent_id, agentResult.data.structuredData);
+
+            // Progressive map: emit partial map data after each agent (Phase 16+)
+            if (ENABLE_PROGRESSIVE_MAP) {
+              const partialMapData = this.buildMapData(structuredResults);
+              if (partialMapData) {
+                eventBus.publish({
+                  kind: "artifact-update",
+                  taskId,
+                  contextId,
+                  artifact: {
+                    artifactId: uuidv4(),
+                    name: "map_progress",
+                    description: `Partial map update after ${agent_id}`,
+                    parts: [{ kind: "text" as const, text: "" }],
+                    metadata: { mapData: partialMapData, agentId: agent_id, stage: "partial" },
+                  },
+                  append: false,
+                  lastChunk: false,
+                } as TaskArtifactUpdateEvent);
+              }
+            }
           }
 
           const resultText = agentResult.success
@@ -774,7 +797,7 @@ export class TravelOrchestratorExecutor implements AgentExecutor {
 
   // ─── A2A event publishing ─────────────────────────────────────────────────────
 
-  private async publishProgress(taskId: string, contextId: string, message: string, eventBus: ExecutionEventBus): Promise<void> {
+  private async publishProgress(taskId: string, contextId: string, message: string, eventBus: ExecutionEventBus, agentId?: string): Promise<void> {
     eventBus.publish({
       kind: "status-update",
       taskId,
@@ -790,6 +813,7 @@ export class TravelOrchestratorExecutor implements AgentExecutor {
           contextId,
         },
         timestamp: new Date().toISOString(),
+        ...(agentId ? { metadata: { agentId } } : {}),
       },
       final: false,
     } as TaskStatusUpdateEvent);
